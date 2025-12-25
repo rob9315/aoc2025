@@ -7,18 +7,18 @@ const Hash = std.crypto.hash.Md5;
 const hashes_file = "template/hashes.bin";
 
 fn instantiateTemplate(template: []const u8, day: u32) ![]const u8 {
-    var list = std.ArrayList(u8).init(gpa.allocator());
-    errdefer list.deinit();
+    var list = std.ArrayList(u8).empty;
+    errdefer list.deinit(gpa.allocator());
 
-    try list.ensureTotalCapacity(template.len + 100);
+    try list.ensureTotalCapacity(gpa.allocator(), template.len + 100);
     var rest: []const u8 = template;
     while (std.mem.indexOfScalar(u8, rest, '$')) |index| {
-        try list.appendSlice(rest[0..index]);
-        try std.fmt.format(list.writer(), "{d:0>2}", .{day});
+        try list.appendSlice(gpa.allocator(), rest[0..index]);
+        try std.fmt.format(list.writer(gpa.allocator()), "{d:0>2}", .{(day + 1) / 2});
         rest = rest[index + 1 ..];
     }
-    try list.appendSlice(rest);
-    return list.toOwnedSlice();
+    try list.appendSlice(gpa.allocator(), rest);
+    return list.toOwnedSlice(gpa.allocator());
 }
 
 fn readHashes() !*[25][Hash.digest_length]u8 {
@@ -39,7 +39,7 @@ pub fn main() !void {
 
     const hashes: *[25][Hash.digest_length]u8 = readHashes() catch |err| switch (err) {
         error.FileNotFound => blk: {
-            std.debug.print("{s} doesn't exist, will assume all files have been modified.\nDelete src/dayXX.zig and rerun `zig build generate` to regenerate it.\n", .{hashes_file});
+            std.debug.print("{s} doesn't exist, will assume all files have been modified.\nDelete src/dayXXpY.zig and rerun `zig build generate` to regenerate it.\n", .{hashes_file});
             const mem = try gpa.allocator().create([25][Hash.digest_length]u8);
             @memset(std.mem.sliceAsBytes(mem), 0);
             break :blk mem;
@@ -57,8 +57,8 @@ pub fn main() !void {
     var skipped_any = false;
     var updated_hashes = false;
     var day: u32 = 1;
-    while (day <= 25) : (day += 1) {
-        const filename = try std.fmt.allocPrint(gpa.allocator(), "src/day{d:0>2}.zig", .{day});
+    while (day <= 23) : (day += 1) {
+        const filename = try std.fmt.allocPrint(gpa.allocator(), "src/day{d:0>2}p{d}.zig", .{ (day + 1) / 2, ((day + 1) & 1) + 1 });
         defer gpa.allocator().free(filename);
 
         var new_file = false;
@@ -124,6 +124,6 @@ pub fn main() !void {
             std.debug.print("Some days were skipped. Delete them to force regeneration.\n", .{});
         }
     } else {
-        std.debug.print("No updates made, all days were modified. Delete src/dayXX.zig to force regeneration.\n", .{});
+        std.debug.print("No updates made, all days were modified. Delete src/dayXXpY.zig to force regeneration.\n", .{});
     }
 }

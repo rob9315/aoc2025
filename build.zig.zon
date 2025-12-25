@@ -1,6 +1,7 @@
 .{
-    .name = "Zig-AoC-Template",
-    .version = "0.13.0",
+    .name = .aoc2025,
+    .fingerprint = 0x52176dd522e03bfa,
+    .version = "0.15.2",
     .dependencies = .{},
     .paths = .{""},
 }
